@@ -17,18 +17,30 @@ package com.example.inventory
 
 import android.content.Context.INPUT_METHOD_SERVICE
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.example.inventory.data.Item
 import com.example.inventory.databinding.FragmentAddItemBinding
+import com.example.inventory.viewmodel.InventoryViewModel
+import com.example.inventory.viewmodel.InventoryViewModelFactory
 
 /**
  * Fragment to add or update an item in the Inventory database.
  */
 class AddItemFragment : Fragment() {
+    private val viewModel: InventoryViewModel by activityViewModels {
+        InventoryViewModelFactory(
+            (activity?.application as InventoryApplication).database.getItemDao()
+        )
+    }
+    lateinit var item: Item
 
     private val navigationArgs: ItemDetailFragmentArgs by navArgs()
 
@@ -44,7 +56,41 @@ class AddItemFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         _binding = FragmentAddItemBinding.inflate(inflater, container, false)
+        binding.addItem = this
+        binding.lifecycleOwner = viewLifecycleOwner
+        binding.viewmodel = viewModel
         return binding.root
+    }
+
+    private fun isEntryValid(): Boolean {
+        return viewModel.isEntryValid(
+            binding.itemName.text.toString(),
+            binding.itemPrice.text.toString(),
+            binding.itemCount.text.toString()
+        )
+    }
+
+    fun addNewItem() {
+        if (isEntryValid()) {
+            if (navigationArgs.itemId > 0) {
+                viewModel.update(
+                    Item(
+                        id = navigationArgs.itemId,
+                        binding.itemName.text.toString(),
+                        binding.itemPrice.text.toString().toDouble(),
+                        binding.itemCount.text.toString().toInt()
+                    )
+                )
+            } else {
+                viewModel.addNewItem(
+                    binding.itemName.text.toString(),
+                    binding.itemPrice.text.toString(),
+                    binding.itemCount.text.toString()
+                )
+            }
+            val action = AddItemFragmentDirections.actionAddItemFragmentToItemListFragment()
+            findNavController().navigate(action)
+        }
     }
 
     /**

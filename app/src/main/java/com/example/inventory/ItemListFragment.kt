@@ -17,13 +17,18 @@
 package com.example.inventory
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.inventory.adapter.ItemAdapter
 import com.example.inventory.databinding.ItemListFragmentBinding
+import com.example.inventory.viewmodel.InventoryViewModel
+import com.example.inventory.viewmodel.InventoryViewModelFactory
 
 /**
  * Main fragment displaying details for all items in the database.
@@ -32,6 +37,9 @@ class ItemListFragment : Fragment() {
 
     private var _binding: ItemListFragmentBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: InventoryViewModel by activityViewModels {
+        InventoryViewModelFactory((activity?.application as InventoryApplication).database.getItemDao())
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -39,13 +47,23 @@ class ItemListFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         _binding = ItemListFragmentBinding.inflate(inflater, container, false)
+        binding.viewModel = viewModel
+        binding.lifecycleOwner = viewLifecycleOwner
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        viewModel.getItems()
         binding.recyclerView.layoutManager = LinearLayoutManager(this.context)
+        binding.recyclerView.adapter = ItemAdapter {
+            Log.e("List",it.toString())
+            val action = ItemListFragmentDirections.actionItemListFragmentToItemDetailFragment(it)
+            this.findNavController().navigate(action)
+
+        }
         binding.floatingActionButton.setOnClickListener {
+            viewModel.setEdit(false)
             val action = ItemListFragmentDirections.actionItemListFragmentToAddItemFragment(
                 getString(R.string.add_fragment_title)
             )

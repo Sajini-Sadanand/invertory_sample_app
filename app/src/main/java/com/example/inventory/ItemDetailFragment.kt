@@ -18,13 +18,17 @@ package com.example.inventory
 
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.example.inventory.databinding.FragmentItemDetailBinding
+import com.example.inventory.viewmodel.InventoryViewModel
+import com.example.inventory.viewmodel.InventoryViewModelFactory
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
@@ -35,6 +39,11 @@ class ItemDetailFragment : Fragment() {
 
     private var _binding: FragmentItemDetailBinding? = null
     private val binding get() = _binding!!
+    private val viewModel:InventoryViewModel by activityViewModels {
+        InventoryViewModelFactory(
+            (activity?.application as InventoryApplication).database.getItemDao()
+        )
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -45,10 +54,29 @@ class ItemDetailFragment : Fragment() {
         return binding.root
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        binding.lifecycleOwner = viewLifecycleOwner
+        binding.viewModel = viewModel
+        binding.itemFrag = this
+        Log.e("Retrieved Detail", navigationArgs.itemId.toString())
+        viewModel.retrieveItem(navigationArgs.itemId).observe(viewLifecycleOwner,{
+            viewModel.setItemDetails(it)
+        })
+    }
+
+    fun callEdit(id:Int){
+        Log.e("List",id.toString())
+        viewModel.setEdit(true)
+        val action =
+            ItemDetailFragmentDirections.actionItemDetailFragmentToAddItemFragment(title = "Edit Item",id)
+        this.findNavController().navigate(action)
+    }
+
     /**
      * Displays an alert dialog to get the user's confirmation before deleting the item.
      */
-    private fun showConfirmationDialog() {
+    fun showConfirmationDialog() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(android.R.string.dialog_alert_title))
             .setMessage(getString(R.string.delete_question))
@@ -64,6 +92,7 @@ class ItemDetailFragment : Fragment() {
      * Deletes the current item and navigates to the list fragment.
      */
     private fun deleteItem() {
+        viewModel.deleteCurrentItem()
         findNavController().navigateUp()
     }
 
